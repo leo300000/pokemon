@@ -121,6 +121,7 @@ Dossiers générés, jamais versionnés :
 | Dossier         | Contenu                                                  |
 |-----------------|----------------------------------------------------------|
 | `.cache/tcgdex/`| La copie locale de la base TCGdex (≈ 190 Mo)             |
+| `.cache/ptcg/`  | La copie locale de la base pokemontcg.io (≈ 30 Mo)       |
 | `dist/`         | Le site prêt à publier : copie de `site/` + `data/`      |
 
 ---
@@ -171,7 +172,16 @@ signalé et ignoré, sans bloquer le build.
 - Garde-fou : si la base contient moins de 5 000 cartes ou 50 extensions, le build s'arrête, pour ne jamais publier
   un site vide.
 
-### 4. Écriture de `dist/`
+### 4. Images de secours (pokemontcg.io)
+
+Le script clone aussi [PokemonTCG/pokemon-tcg-data](https://github.com/PokemonTCG/pokemon-tcg-data) dans `.cache/ptcg/`.
+Les deux bases n'utilisent pas les mêmes identifiants d'extension (`sv07` / `sv7`, `swsh3.5` / `swsh35`…) : chaque
+extension TCGdex est associée à l'extension pokemontcg.io dont le plus de cartes ont le même numéro et le même nom
+anglais (au moins la moitié). Chaque carte reçoit alors l'adresse de son image pokemontcg.io (`pi`), utilisée en
+dernier recours. Environ 20 500 cartes sur 21 400 en ont une ; les kits du dresseur et quelques promos n'existent pas
+chez pokemontcg.io. Si ce dépôt est injoignable, le build continue sans images de secours.
+
+### 5. Écriture de `dist/`
 
 `dist/` est vidé, puis le script y copie `site/`. Il écrit ensuite les quatre fichiers JSON et un fichier `.nojekyll`,
 qui empêche GitHub Pages de passer le site dans Jekyll.
@@ -254,8 +264,9 @@ La navigation passe par l'ancre de l'URL : chaque page a sa propre adresse, que 
 ### Images
 
 Adresse : `https://assets.tcgdex.net/<langue>/<série>/<extension>/<numéro>/low.webp` (≈ 245 × 342 px).
-Le site prend d'abord l'image dans la langue choisie, puis l'autre langue si elle manque. Si aucune ne se charge,
-la pochette affiche le nom de la carte à la place.
+Le site prend d'abord l'image dans la langue choisie, puis l'autre langue si elle manque. Si TCGdex n'a la carte dans
+aucune langue, il prend l'image anglaise de [pokemontcg.io](https://pokemontcg.io) (images.pokemontcg.io, ou
+images.scrydex.com pour les extensions récentes). Si rien ne se charge, la pochette affiche le nom de la carte à la place.
 
 ### Énergies
 
@@ -302,7 +313,8 @@ Tous les fichiers sont dans `dist/data/`.
 | `rm`  | Marque de régulation                         | `"G"`                           |
 | `il`  | Illustrateur                                 | `"Mitsuhiro Arita"`             |
 | `v`   | Versions imprimées                           | `["holo", "firstEdition"]`      |
-| `im`  | Images disponibles : 1 = FR, 2 = EN, 3 = les deux | `3`                        |
+| `im`  | Images TCGdex disponibles : 1 = FR, 2 = EN, 3 = les deux | `3`                 |
+| `pi`  | Image de secours pokemontcg.io (chemin après `images.pokemontcg.io/`, ou adresse complète) | `"base1/4.png"` |
 
 ### `sets.json`
 
@@ -361,6 +373,7 @@ dans `dist/`.
 | `SEARCH_LIMIT`     | haut du script de `site/index.html`  | `150`  | Nombre maximal de résultats de recherche affichés     |
 | `EXCLUDED_SERIES`  | haut de `scripts/build.mjs`          | `tcgp` | Séries à ne pas afficher                              |
 | `TCGDEX_DIR`       | variable d'environnement             | —      | Chemin d'une copie locale de la base TCGdex           |
+| `PTCG_DIR`         | variable d'environnement             | —      | Chemin d'une copie locale de la base pokemontcg.io    |
 | `SKIP_IMAGES_LIST` | variable d'environnement             | —      | `1` : ne lit pas `datas.json` (le site essaie FR puis EN) |
 | Planification      | `cron` dans `deploy.yml`             | lundi 4 h UTC | Fréquence de mise à jour automatique           |
 
@@ -374,7 +387,7 @@ dans `dist/`.
 | « Les données du classeur sont introuvables » | `data/*.json` absents (site servi sans build) | Lancer `node scripts/build.mjs` et servir `dist/` |
 | Le run échoue sur `Base TCGdex inattendue` | Clonage incomplet ou base réorganisée | Relancer avec **Run workflow** ; l'ancien site reste en ligne |
 | Le run signale des fichiers illisibles | Nouvelle syntaxe dans quelques fiches TCGdex | Ces cartes manquent jusqu'à la correction du lecteur dans `loadTs` |
-| Certaines cartes sans image | Pas encore de scan chez TCGdex, dans aucune langue | Elles apparaîtront quand TCGdex les ajoutera |
+| Certaines cartes sans image | Ni TCGdex ni pokemontcg.io n'ont de scan (kits du dresseur, certaines promos) | Elles apparaîtront quand l'une des deux bases les ajoutera |
 | Image anglaise alors que FR est choisi | Pas de scan français pour cette carte | Normal, le site prend l'autre langue en secours |
 | Nom anglais alors que FR est choisi | Carte pas encore traduite dans TCGdex | Normal, le site prend l'anglais en secours |
 | Plus de mise à jour le lundi | Tâche planifiée désactivée après 60 jours sans activité | La réactiver depuis l'onglet **Actions** |

@@ -8,6 +8,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="preconnect" href="https://assets.tcgdex.net">
+<link rel="preconnect" href="https://images.pokemontcg.io">
 <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:ital,wght@0,400;0,600;0,800;1,400&display=swap" rel="stylesheet">
 <style>
 :root {
@@ -263,7 +264,7 @@ dialog::backdrop { background: rgba(5, 12, 28, .74); backdrop-filter: blur(3px);
     </div>
     <div id="view" class="view"><p class="status">Chargement du classeur…</p></div>
     <footer class="foot">
-      Données et images : TCGdex. Pokémon et les visuels des cartes appartiennent à Nintendo, Creatures Inc. et GAME FREAK inc. (The Pokémon Company). Site de fan non officiel, sans but commercial.
+      Données et images : TCGdex, avec pokemontcg.io pour les images manquantes. Pokémon et les visuels des cartes appartiennent à Nintendo, Creatures Inc. et GAME FREAK inc. (The Pokémon Company). Site de fan non officiel, sans but commercial.
       <span id="built"></span>
     </footer>
   </main>
@@ -292,6 +293,7 @@ dialog::backdrop { background: rgba(5, 12, 28, .74); backdrop-filter: blur(3px);
   const TILT_MAX = 14;
   const TILT_DIR = 1;
   const IMG_BASE = 'https://assets.tcgdex.net';
+  const PTCG_IMG = 'https://images.pokemontcg.io/';
   const SEARCH_LIMIT = 150;
 
   const $ = (s) => document.querySelector(s);
@@ -356,7 +358,10 @@ dialog::backdrop { background: rgba(5, 12, 28, .74); backdrop-filter: blur(3px);
     const s = state.setById.get(c.s);
     const im = c.im ?? 0;
     const langs = fr() ? [['fr', 1], ['en', 2]] : [['en', 2], ['fr', 1]];
-    return langs.filter(([, bit]) => im & bit).map(([l]) => `${IMG_BASE}/${l}/${s.s}/${s.id}/${encodeURIComponent(c.l)}/low.webp`);
+    const urls = langs.filter(([, bit]) => im & bit).map(([l]) => `${IMG_BASE}/${l}/${s.s}/${s.id}/${encodeURIComponent(c.l)}/low.webp`);
+    // Image de secours (en anglais) quand TCGdex n'a pas la carte : pokemontcg.io
+    if (c.pi) urls.push(/^https:/.test(c.pi) ? c.pi : PTCG_IMG + c.pi);
+    return urls;
   }
 
   // ---------- Rendu des cartes ----------

@@ -3,10 +3,12 @@
 //  - récupère la base TCGdex (dépôt GitHub tcgdex/cards-database, noms et textes FR + EN)
 //  - lit chaque série, extension et carte, puis écrit data/*.json
 //  - demande à TCGdex la liste des images disponibles (assets.tcgdex.net/datas.json)
+//  - récupère la base pokemontcg.io (dépôt GitHub PokemonTCG/pokemon-tcg-data) pour les images de secours
 //  - copie site/ dans dist/
 //
 // Variables d'environnement :
 //   TCGDEX_DIR=chemin    utilise une copie locale de la base au lieu de la cloner dans .cache/
+//   PTCG_DIR=chemin      utilise une copie locale de la base pokemontcg.io au lieu de la cloner dans .cache/
 //   SKIP_IMAGES_LIST=1   ne télécharge pas la liste des images (le site essaie FR puis EN)
 
 import { execFileSync } from 'node:child_process';
@@ -20,6 +22,9 @@ const SITE = path.join(ROOT, 'site');
 const DIST = path.join(ROOT, 'dist');
 const REPO_URL = 'https://github.com/tcgdex/cards-database.git';
 const REPO_DIR = process.env.TCGDEX_DIR ? path.resolve(process.env.TCGDEX_DIR) : path.join(ROOT, '.cache', 'tcgdex');
+const PTCG_URL = 'https://github.com/PokemonTCG/pokemon-tcg-data.git';
+const PTCG_DIR = process.env.PTCG_DIR ? path.resolve(process.env.PTCG_DIR) : path.join(ROOT, '.cache', 'ptcg');
+const PTCG_IMG = 'https://images.pokemontcg.io/';
 const IMAGES_LIST = 'https://assets.tcgdex.net/datas.json';
 const SKIP_IMAGES_LIST = process.env.SKIP_IMAGES_LIST === '1';
 const EXCLUDED_SERIES = new Set(['tcgp']); // Pokémon TCG Pocket : jeu mobile, pas de cartes physiques
@@ -62,18 +67,23 @@ const tsFiles = (dir) => readdirSync(dir).filter((f) => f.endsWith('.ts') && sta
 const txt = (o) => (o && typeof o === 'object' ? [o.en || '', o.fr && o.fr !== o.en ? o.fr : ''] : ['', '']);
 const trim = (a) => { while (a.length && (a[a.length - 1] === '' || a[a.length - 1] == null)) a.pop(); return a; };
 
-// ---------- 1. Base de données ----------
-if (process.env.TCGDEX_DIR) {
-  console.log(`→ Base TCGdex locale : ${REPO_DIR}`);
-} else if (existsSync(path.join(REPO_DIR, '.git'))) {
-  console.log('→ Mise à jour de la base TCGdex…');
-  git('-C', REPO_DIR, 'fetch', '--depth', '1', '-q', 'origin', 'HEAD');
-  git('-C', REPO_DIR, 'reset', '--hard', '-q', 'FETCH_HEAD');
-} else {
-  console.log('→ Clonage de la base TCGdex…');
-  await mkdir(path.dirname(REPO_DIR), { recursive: true });
-  git('clone', '--depth', '1', '-q', REPO_URL, REPO_DIR);
+// Clone un dépôt dans .cache/ la première fois, puis ne récupère que les changements
+async function syncRepo(label, url, dir, local) {
+  if (local) {
+    console.log(`→ ${label} locale : ${dir}`);
+  } else if (existsSync(path.join(dir, '.git'))) {
+    console.log(`→ Mise à jour de ${label}…`);
+    git('-C', dir, 'fetch', '--depth', '1', '-q', 'origin', 'HEAD');
+    git('-C', dir, 'reset', '--hard', '-q', 'FETCH_HEAD');
+  } else {
+    console.log(`→ Clonage de ${label}…`);
+    await mkdir(path.dirname(dir), { recursive: true });
+    git('clone', '--depth', '1', '-q', url, dir);
+  }
 }
+
+// ---------- 1. Base de données ----------
+await syncRepo('la base TCGdex', REPO_URL, REPO_DIR, process.env.TCGDEX_DIR);
 const DATA = path.join(REPO_DIR, 'data');
 const commit = (() => {
   try { return execFileSync('git', ['-C', REPO_DIR, 'rev-parse', '--short', 'HEAD']).toString().trim(); } catch { return null; }
@@ -203,10 +213,49 @@ if (images && withImage < nCards / 2) {
   images = null;
   withImage = nCards;
 }
-console.log(`  ${nCards} cartes, ${sets.length} extensions, ${series.length} séries, ${Object.values(cards).filter((c) => c.nf).length} noms français, ${withImage} images`);
+console.log(`  ${nCards} cartes, ${sets.length} extensions, ${series.length} séries, ${Object.values(cards).filter((c) => c.nf).length} noms français, ${withImage} images TCGdex`);
 if (failed) console.warn(`  ${failed} fichier(s) illisible(s), ignoré(s)`);
 
-// ---------- 3. dist/ ----------
+// ---------- 3. Images de secours (pokemontcg.io) ----------
+// Les identifiants d'extension diffèrent entre les deux bases (sv07 / sv7, swsh3.5 / swsh35…) :
+// chaque extension TCGdex est associée à l'extension pokemontcg.io dont le plus de cartes ont
+// le même numéro et le même nom anglais (au moins la moitié).
+let backups = 0;
+try {
+  await syncRepo('la base pokemontcg.io', PTCG_URL, PTCG_DIR, process.env.PTCG_DIR);
+  const num = (n) => String(n).toUpperCase().replace(/^([A-Z]*)0+(?=\d)/, '$1');
+  const simple = (s) => String(s).toLowerCase().normalize('NFD').replace(/[^a-z0-9]/g, '');
+  const ptcg = [];
+  const dir = path.join(PTCG_DIR, 'cards', 'en');
+  for (const f of readdirSync(dir).filter((f) => f.endsWith('.json'))) {
+    const byNum = new Map();
+    for (const c of JSON.parse(readFileSync(path.join(dir, f), 'utf8'))) {
+      const img = c.images?.small;
+      // Chemin court pour images.pokemontcg.io, adresse complète pour les autres hébergeurs (ex. images.scrydex.com)
+      if (/^https:\/\//.test(img || '')) byNum.set(num(c.number), [simple(c.name), img.startsWith(PTCG_IMG) ? img.slice(PTCG_IMG.length) : img]);
+    }
+    ptcg.push(byNum);
+  }
+  for (const s of sets) {
+    let best = null;
+    let score = 0;
+    for (const byNum of ptcg) {
+      let n = 0;
+      for (const id of s.k) if (byNum.get(num(cards[id].l))?.[0] === simple(cards[id].n)) n++;
+      if (n > score) { score = n; best = byNum; }
+    }
+    if (!best || score < s.k.length / 2) continue;
+    for (const id of s.k) {
+      const p = best.get(num(cards[id].l));
+      if (p) { cards[id].pi = p[1]; backups++; }
+    }
+  }
+} catch (err) {
+  console.warn(`  Base pokemontcg.io indisponible, pas d'images de secours (${err.message})`);
+}
+const noImage = Object.values(cards).filter((c) => !c.im && !c.pi).length;
+console.log(`  ${backups} images de secours, ${noImage} carte(s) sans aucune image`);
+// ---------- 4. dist/ ----------
 console.log('→ Écriture de dist/');
 await rm(DIST, { recursive: true, force: true });
 await cp(SITE, DIST, { recursive: true });
