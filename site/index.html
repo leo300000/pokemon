@@ -1,0 +1,704 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Classeur Pokémon</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='44' fill='%23fff' stroke='%23222' stroke-width='8'/><path d='M6 50a44 44 0 0 1 88 0z' fill='%23E3350D' stroke='%23222' stroke-width='8'/><circle cx='50' cy='50' r='13' fill='%23fff' stroke='%23222' stroke-width='8'/></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="preconnect" href="https://assets.tcgdex.net">
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:ital,wght@0,400;0,600;0,800;1,400&display=swap" rel="stylesheet">
+<style>
+:root {
+  --binder: #12203A;
+  --page: #182A4A;
+  --sleeve: #20375F;
+  --edge: #33507E;
+  --ink: #EDF2FB;
+  --muted: #9DAFCE;
+  --gold: #FFCB05;
+  --red: #E3350D;
+  --holo: #8FE3F0;
+  --body: "Nunito", "Segoe UI", system-ui, sans-serif;
+  --display: "Fredoka", "Nunito", "Segoe UI", system-ui, sans-serif;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; }
+body {
+  background: var(--binder);
+  color: var(--ink);
+  font: 16px/1.5 var(--body);
+  padding: env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px) env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px);
+}
+a { color: inherit; }
+button, input, select { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* ---------- Structure ---------- */
+.app { display: grid; grid-template-columns: 310px minmax(0, 1fr); height: 100%; }
+.spine { display: flex; flex-direction: column; min-height: 0; padding: 22px 14px 0 20px; }
+.page {
+  overflow-y: auto; min-height: 0;
+  background: var(--page);
+  margin: 10px 0;
+  border-radius: 18px 0 0 18px;
+  box-shadow: inset 12px 0 24px -16px rgba(4, 10, 26, .9);
+  display: flex; flex-direction: column;
+}
+
+/* ---------- Tranche : liste des extensions ---------- */
+.brand { display: flex; align-items: center; gap: 10px; font: 700 1.55rem/1 var(--display); text-decoration: none; }
+.brand svg { width: 34px; height: 34px; flex-shrink: 0; }
+.brand small { display: block; font-size: 1rem; font-weight: 600; color: var(--gold); margin-top: 3px; }
+.spine-head { display: grid; gap: 10px; padding-bottom: 14px; }
+.spine-head .brand { margin-bottom: 8px; }
+input[type=search], select {
+  width: 100%; background: var(--page); border: 1px solid var(--edge); border-radius: 8px; padding: 8px 11px;
+}
+input::placeholder { color: var(--muted); }
+.sortf { display: flex; align-items: center; gap: 10px; color: var(--muted); font-size: .92rem; }
+.sortf select { flex: 1; }
+.set-list { list-style: none; margin: 0 -6px 0 0; padding: 0 6px 24px 0; overflow-y: auto; flex: 1; scrollbar-width: thin; }
+.set-list .year { font: 600 .95rem var(--display); color: var(--gold); padding: 16px 8px 4px; position: sticky; top: 0; background: var(--binder); z-index: 1; }
+.set-link {
+  display: grid; grid-template-columns: 1fr auto; column-gap: 8px;
+  padding: 6px 8px; border-radius: 6px; text-decoration: none; border-left: 3px solid transparent;
+}
+.set-link:hover { background: rgba(255,255,255,.04); }
+.set-link[aria-current=page] { background: var(--page); border-left-color: var(--gold); }
+.sname { font-size: .95rem; line-height: 1.25; }
+.scode { font: 500 .78rem var(--display); color: var(--muted); grid-column: 1; letter-spacing: .02em; }
+.scount { grid-row: 1 / span 2; grid-column: 2; align-self: center; color: var(--muted); font-size: .85rem; }
+.empty { color: var(--muted); padding: 12px 8px; font-size: .95rem; }
+
+/* ---------- Barre du haut ---------- */
+.topbar {
+  position: sticky; top: 0; z-index: 10;
+  display: flex; gap: 12px; align-items: center;
+  padding: 14px clamp(16px, 4vw, 44px);
+  background: color-mix(in srgb, var(--page) 88%, transparent);
+  backdrop-filter: blur(8px);
+}
+.topbar input { max-width: 520px; min-width: 0; flex: 1; }
+.menu-btn { display: none; }
+.lang { margin-left: auto; flex-shrink: 0; display: flex; border: 1px solid var(--edge); border-radius: 8px; overflow: hidden; background: none; padding: 0; cursor: pointer; }
+.lang span { padding: 7px 11px; font: 600 .85rem var(--display); color: var(--muted); }
+.lang span.on { background: var(--gold); color: var(--binder); }
+
+/* ---------- Vues ---------- */
+.view { padding: 8px clamp(16px, 4vw, 44px) 40px; flex: 1; }
+.status { color: var(--muted); padding: 40px 0; }
+.view-head { padding: 18px 0 22px; max-width: 70ch; }
+.set-code { font: 600 1.05rem var(--display); color: var(--gold); margin: 0 0 6px; }
+.set-code span { color: var(--muted); font-weight: 500; }
+.title { font: 700 clamp(2rem, 4.2vw, 3.2rem)/1.05 var(--display); margin: 0; text-wrap: balance; }
+.lede { color: var(--muted); margin: 12px 0 0; }
+.section { font: 600 1.25rem var(--display); margin: 8px 0 14px; }
+
+.toolbar { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-bottom: 22px; }
+.seg { display: inline-flex; border: 1px solid var(--edge); border-radius: 9px; overflow: hidden; }
+.seg button { background: none; border: 0; padding: 7px 14px; cursor: pointer; font-size: .95rem; }
+.seg button + button { border-left: 1px solid var(--edge); }
+.seg button[aria-pressed=true] { background: var(--sleeve); color: var(--gold); }
+.seg small { color: var(--muted); margin-left: 4px; }
+.toolbar input { max-width: 280px; }
+
+/* ---------- Pochettes et cartes ---------- */
+.pockets {
+  list-style: none; margin: 0; padding: 0;
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(155px, 1fr)); gap: 20px 16px;
+}
+.pocket {
+  padding: 10px 10px 12px; border-radius: 6px;
+  background: linear-gradient(180deg, rgba(255,255,255,.055), rgba(255,255,255,.015));
+  border: 1px solid rgba(255,255,255,.06);
+}
+.card {
+  display: block; width: 100%; padding: 0; border: 0; background: none; cursor: pointer;
+  perspective: 800px; position: relative;
+}
+.card-inner {
+  display: block; position: relative; aspect-ratio: 63 / 88; overflow: hidden;
+  border-radius: 4.6% / 3.3%;
+  background: #0F1A30;
+  transform: rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg)) scale(var(--s, 1));
+  transition: transform .5s cubic-bezier(.2, .8, .2, 1), box-shadow .5s;
+  box-shadow: 0 2px 6px rgba(3, 8, 22, .5);
+  will-change: transform;
+}
+.card.tilting { z-index: 3; --s: 1.06; }
+.card.tilting .card-inner {
+  transition: transform .07s linear, box-shadow .2s;
+  box-shadow: var(--shx, 0px) var(--shy, 12px) 26px rgba(3, 8, 22, .65);
+}
+.card-inner img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.card:focus-visible { outline: none; }
+.card:focus-visible .card-inner { outline: 3px solid var(--gold); outline-offset: 3px; }
+.card-inner.missing::after {
+  content: attr(data-name); position: absolute; inset: 0; display: grid; place-items: center;
+  padding: 12px; text-align: center; color: var(--muted); font-size: .9rem; border: 1px dashed var(--edge); border-radius: inherit;
+}
+.glare, .foil { position: absolute; inset: 0; pointer-events: none; opacity: 0; transition: opacity .35s; }
+.glare {
+  background: radial-gradient(circle at var(--mx, 50%) var(--my, 50%), rgba(255,255,255,.55), rgba(255,255,255,0) 58%);
+  mix-blend-mode: soft-light;
+}
+.foil {
+  background: linear-gradient(115deg, transparent 22%, rgba(255,80,170,.6) 36%, rgba(255,225,90,.6) 44%, rgba(80,255,200,.6) 52%, rgba(90,150,255,.6) 60%, transparent 76%);
+  background-size: 260% 260%;
+  background-position: var(--mx, 50%) var(--my, 50%);
+  mix-blend-mode: color-dodge;
+}
+.card.tilting .glare { opacity: 1; }
+.card.tilting[data-foil=holo] .foil { opacity: .35; }
+.card.tilting[data-foil=secret] .foil { opacity: .75; filter: saturate(1.4); }
+
+.print { display: flex; justify-content: space-between; gap: 8px; margin-top: 9px; font-size: .78rem; color: var(--muted); }
+.print .code { font: 600 .82rem var(--display); color: var(--ink); white-space: nowrap; }
+.print .rar { text-align: right; }
+.rar.holo { color: var(--holo); }
+.rar.secret { color: var(--gold); }
+.cname { margin: 3px 0 0; font-size: .88rem; line-height: 1.25; }
+
+.set-tiles { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 12px; }
+.set-tile { display: block; height: 100%; padding: 14px 16px; border-radius: 8px; text-decoration: none; background: var(--sleeve); border: 1px solid transparent; }
+.set-tile:hover { border-color: var(--edge); }
+.set-tile b { display: block; font: 600 1rem var(--display); color: var(--gold); }
+.set-tile span { display: block; margin: 2px 0 6px; line-height: 1.25; }
+.set-tile small { color: var(--muted); }
+
+.foot { padding: 18px clamp(16px, 4vw, 44px) 24px; color: var(--muted); font-size: .82rem; border-top: 1px solid rgba(255,255,255,.06); }
+
+/* ---------- Énergies ---------- */
+.e {
+  display: inline-grid; place-items: center; width: 1.25em; height: 1.25em; border-radius: 50%;
+  font: 700 .72em/1 var(--display); color: #fff; vertical-align: -.2em; margin: 0 1px;
+  box-shadow: inset 0 -2px 0 rgba(0,0,0,.25);
+}
+.e-Grass { background: #3E9B3A; } .e-Fire { background: #E04B2C; } .e-Water { background: #2E86D6; }
+.e-Lightning { background: #F2C318; color: #3A2E00; } .e-Psychic { background: #9157C7; } .e-Fighting { background: #B9652B; }
+.e-Darkness { background: #2A3A45; } .e-Metal { background: #8C98A3; } .e-Fairy { background: #E06FAE; }
+.e-Dragon { background: #B8962E; } .e-Colorless { background: #E8E8E2; color: #444; }
+
+/* ---------- Fiche carte ---------- */
+dialog {
+  border: 0; padding: 0; border-radius: 14px; background: var(--page); color: var(--ink);
+  width: min(900px, 94vw); max-height: 90vh; box-shadow: 0 30px 80px rgba(0,0,0,.6);
+}
+dialog::backdrop { background: rgba(5, 12, 28, .74); backdrop-filter: blur(3px); }
+.dlg { display: grid; grid-template-columns: 280px minmax(0, 1fr); gap: 30px; padding: 30px; max-height: 90vh; overflow-y: auto; }
+.dlg .card { cursor: default; }
+.close { position: absolute; top: 12px; right: 12px; background: var(--sleeve); border: 1px solid var(--edge); border-radius: 8px; padding: 6px 12px; cursor: pointer; }
+.dlg h2 { font: 700 1.8rem/1.1 var(--display); margin: 0 60px 4px 0; text-wrap: balance; }
+.alt { color: var(--muted); margin: 0 0 16px; font-style: italic; }
+.stats { display: grid; grid-template-columns: auto 1fr; gap: 4px 18px; margin: 0 0 18px; }
+.stats dt { color: var(--muted); }
+.stats dd { margin: 0; }
+.desc { background: rgba(255,255,255,.04); border-radius: 8px; padding: 14px 16px; margin: 0 0 20px; max-width: 68ch; }
+.desc:empty { display: none; }
+.desc.loading { color: var(--muted); }
+.move + .move { border-top: 1px solid rgba(255,255,255,.07); margin-top: 12px; padding-top: 12px; }
+.move-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-weight: 800; }
+.move-head .dmg { margin-left: auto; font: 600 1.1rem var(--display); }
+.move-kind { font: 600 .72rem var(--display); text-transform: uppercase; letter-spacing: .05em; background: var(--red); color: #fff; border-radius: 4px; padding: 2px 6px; }
+.move p, .flavor { margin: 4px 0 0; white-space: pre-line; }
+.flavor { color: var(--muted); font-style: italic; margin-top: 12px; }
+.dlg h3 { font: 600 1.05rem var(--display); margin: 0 0 8px; }
+.prints { list-style: none; margin: 0; padding: 0; columns: 2 220px; column-gap: 20px; }
+.prints li { break-inside: avoid; padding: 3px 0; font-size: .92rem; }
+.prints a { text-decoration: none; }
+.prints a:hover .pn { text-decoration: underline; }
+.prints b { font: 600 .85rem var(--display); margin-right: 6px; }
+.prints .pr { color: var(--muted); }
+.prints .here { color: var(--gold); }
+
+/* ---------- Mobile ---------- */
+@media (max-width: 860px) {
+  .app { grid-template-columns: minmax(0, 1fr); }
+  .spine {
+    position: fixed; inset: 0 auto 0 0; width: min(86vw, 330px); z-index: 30; background: var(--binder);
+    padding-top: calc(22px + env(safe-area-inset-top, 0px)); padding-bottom: env(safe-area-inset-bottom, 0px);
+    transform: translateX(-102%); transition: transform .3s ease;
+  }
+  .app.nav-open .spine { transform: none; box-shadow: 20px 0 50px rgba(0,0,0,.5); }
+  .scrim { position: fixed; inset: 0; z-index: 25; background: rgba(5,12,28,.6); }
+  .page { margin: 0; border-radius: 0; }
+  .menu-btn { display: block; background: var(--sleeve); border: 1px solid var(--edge); border-radius: 8px; padding: 7px 12px; cursor: pointer; white-space: nowrap; }
+  .pockets { grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 14px 10px; }
+  .dlg { grid-template-columns: 1fr; padding: 22px; }
+  .dlg-card { width: min(240px, 70%); margin: 0 auto; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .card-inner, .glare, .foil, .spine { transition: none !important; }
+}
+</style>
+</head>
+<body>
+<div class="app" id="app">
+  <aside class="spine" id="spine" aria-label="Extensions">
+    <div class="spine-head">
+      <a class="brand" href="#/"><svg viewBox="0 0 100 100" aria-hidden="true"><circle cx="50" cy="50" r="44" fill="#fff" stroke="#0B1426" stroke-width="7"/><path d="M6 50a44 44 0 0 1 88 0z" fill="#E3350D" stroke="#0B1426" stroke-width="7"/><circle cx="50" cy="50" r="13" fill="#fff" stroke="#0B1426" stroke-width="7"/></svg><span>Classeur <small>Pokémon</small></span></a>
+      <label><span class="sr">Filtrer les extensions</span><input id="set-filter" type="search" placeholder="Filtrer les extensions" autocomplete="off"></label>
+      <label class="sortf"><span>Trier</span>
+        <select id="set-sort">
+          <option value="new">Plus récentes d'abord</option>
+          <option value="old">Plus anciennes d'abord</option>
+          <option value="alpha">Par nom</option>
+        </select>
+      </label>
+    </div>
+    <ul class="set-list" id="set-list"></ul>
+  </aside>
+  <div class="scrim" id="scrim" hidden></div>
+
+  <main class="page" id="page">
+    <div class="topbar">
+      <button class="menu-btn" id="menu-btn" type="button" aria-controls="spine" aria-expanded="false">Extensions</button>
+      <label class="sr" for="card-search">Chercher une carte</label>
+      <input id="card-search" type="search" placeholder="Chercher une carte dans toutes les extensions" autocomplete="off">
+      <button class="lang" id="lang-btn" type="button" title="Langue des noms et des images"><span data-l="fr">FR</span><span data-l="en">EN</span></button>
+    </div>
+    <div id="view" class="view"><p class="status">Chargement du classeur…</p></div>
+    <footer class="foot">
+      Données et images : TCGdex. Pokémon et les visuels des cartes appartiennent à Nintendo, Creatures Inc. et GAME FREAK inc. (The Pokémon Company). Site de fan non officiel, sans but commercial.
+      <span id="built"></span>
+    </footer>
+  </main>
+</div>
+
+<dialog id="card-dialog" aria-labelledby="dlg-name">
+  <div class="dlg">
+    <button class="close" type="button" id="dlg-close">Fermer</button>
+    <div class="dlg-card" id="dlg-card"></div>
+    <div class="dlg-info">
+      <h2 id="dlg-name"></h2>
+      <p class="alt" id="dlg-alt"></p>
+      <dl class="stats" id="dlg-stats"></dl>
+      <div class="desc" id="dlg-desc"></div>
+      <h3 id="dlg-prints-title">Toutes les cartes de ce nom</h3>
+      <ul class="prints" id="dlg-prints"></ul>
+    </div>
+  </div>
+</dialog>
+
+<script>
+(() => {
+  'use strict';
+
+  // Inclinaison : angle max en degrés, et sens (1 = le coin sous le curseur s'enfonce, -1 = il se soulève)
+  const TILT_MAX = 14;
+  const TILT_DIR = 1;
+  const IMG_BASE = 'https://assets.tcgdex.net';
+  const SEARCH_LIMIT = 150;
+
+  const $ = (s) => document.querySelector(s);
+  const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+  const norm = (s) => String(s ?? '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
+  const store = {
+    get(k) { try { return localStorage.getItem(k); } catch { return null; } },
+    set(k, v) { try { localStorage.setItem(k, v); } catch {} },
+  };
+
+  const TYPES = {
+    Grass: ['Plante', 'G'], Fire: ['Feu', 'R'], Water: ['Eau', 'W'], Lightning: ['Électrique', 'L'], Psychic: ['Psy', 'P'],
+    Fighting: ['Combat', 'F'], Darkness: ['Obscurité', 'D'], Metal: ['Métal', 'M'], Fairy: ['Fée', 'Y'], Dragon: ['Dragon', 'N'], Colorless: ['Incolore', 'C'],
+  };
+  const LETTER = Object.fromEntries(Object.entries(TYPES).map(([k, [, l]]) => [l, k]));
+  const STAGE = { Basic: 'De base', Stage1: 'Niveau 1', Stage2: 'Niveau 2', RESTORED: 'Restauré', 'LEVEL-UP': 'NIV.X', Baby: 'Bébé', MEGA: 'Méga' };
+  const TRAINER = { Item: 'Objet', Supporter: 'Supporter', Stadium: 'Stade', Tool: 'Outil Pokémon', 'Technical Machine': 'Machine Technique', "Rocket's Secret Machine": 'Machine Secrète des Rocket' };
+  const RARITY = {
+    Common: 'Commune', Uncommon: 'Peu commune', 'Rare Holo': 'Rare Holo', 'Holo Rare': 'Rare Holo', 'Holo Rare V': 'Rare Holo V',
+    'Holo Rare VMAX': 'Rare Holo VMAX', 'Holo Rare VSTAR': 'Rare Holo VSTAR', 'Double rare': 'Double rare', 'Ultra Rare': 'Ultra rare',
+    'Illustration rare': 'Illustration rare', 'Special illustration rare': 'Illustration spéciale rare', 'Hyper rare': 'Hyper rare',
+    'Secret Rare': 'Rare secrète', 'Shiny rare': 'Chromatique rare', 'Shiny rare V': 'Chromatique rare V', 'Shiny rare VMAX': 'Chromatique rare VMAX',
+    'Shiny Ultra Rare': 'Chromatique ultra rare', 'Amazing Rare': 'Rare magnifique', 'Radiant Rare': 'Radieux', 'ACE SPEC Rare': 'HIGH-TECH rare',
+    LEGEND: 'LÉGENDE', 'Rare Holo LV.X': 'Rare Holo NIV.X', 'Classic Collection': 'Collection Classique', Crown: 'Couronne',
+    'Full Art Trainer': 'Dresseur Full Art', 'Black White Rare': 'Rare Noir & Blanc', 'Mega Hyper Rare': 'Méga hyper rare', 'Mega Attack Rare': 'Méga attaque rare',
+  };
+  const VARIANT = { normal: 'Normale', reverse: 'Reverse', holo: 'Holo', firstEdition: '1re édition', wPromo: 'Promo W' };
+  const KINDS = [['all', 'Tout'], ['P', 'Pokémon'], ['T', 'Dresseurs'], ['E', 'Énergies']];
+  const MOVE_KIND = ['Attaque', 'Talent', 'Objet'];
+  const ABILITY = { Ability: 'Talent', 'Pokemon Power': 'Pouvoir Pokémon', 'Poke-POWER': 'Poké-POWER', 'Poke-BODY': 'Poké-BODY', 'Ancient Trait': 'Trait Antique' };
+
+  const state = {
+    sets: [], setById: new Map(), series: new Map(), cards: {}, byName: new Map(), index: [], texts: null, meta: {},
+    lang: store.get('pkm-lang') === 'en' ? 'en' : 'fr',
+    sort: ['new', 'old', 'alpha'].includes(store.get('pkm-sort')) ? store.get('pkm-sort') : 'new',
+    current: null, kind: 'all', filter: '',
+  };
+
+  const view = $('#view');
+  const fr = () => state.lang === 'fr';
+  const nameOf = (c) => (fr() ? c.nf || c.n : c.n);
+  const altNameOf = (c) => (fr() ? (c.nf && c.nf !== c.n ? c.n : '') : c.nf && c.nf !== c.n ? c.nf : '');
+  const setName = (s) => (fr() ? s.nf || s.n : s.n);
+  const serieName = (id) => { const s = state.series.get(id); return s ? (fr() ? s.nf || s.n : s.n) : id; };
+  const setCode = (s) => s.c || s.id.toUpperCase();
+  const typeName = (t) => (fr() ? TYPES[t]?.[0] : null) || t;
+  const rarityName = (r) => (fr() ? RARITY[r] : null) || r || '';
+  const fmtDate = (d) => (d ? new Date(d + 'T00:00:00').toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }) : '');
+  const plural = (n, one, many) => `${n.toLocaleString('fr-FR')} ${n > 1 ? many : one}`;
+  const numberOf = (c) => { const s = state.setById.get(c.s); return s?.o && /^\d+$/.test(c.l) ? `${c.l}/${String(s.o).padStart(Math.min(c.l.length, 3), '0')}` : c.l; };
+  const pip = (t) => `<span class="e e-${esc(t)}" title="${esc(typeName(t))}" aria-label="${esc(typeName(t))}">${esc(TYPES[t]?.[1] || '?')}</span>`;
+  function foilOf(r = '', v) {
+    if (!r && !v) return '';
+    if (v?.includes('holo') && !v.includes('normal') && !/holo|secret|ultra/i.test(r)) return 'holo';
+    if (/secret|hyper|special illustration|shiny|amazing|crown|gold|rainbow|black white|futuristic|pikachu|rgb|classic/i.test(r)) return 'secret';
+    if (/holo|double|ultra|illustration|radiant|ace spec|prime|legend|full art|attack rare|star/i.test(r)) return 'holo';
+    return '';
+  }
+
+  // Images hébergées par TCGdex : langue choisie d'abord, puis l'autre langue en secours
+  function imagesOf(c) {
+    const s = state.setById.get(c.s);
+    const im = c.im ?? 0;
+    const langs = fr() ? [['fr', 1], ['en', 2]] : [['en', 2], ['fr', 1]];
+    return langs.filter(([, bit]) => im & bit).map(([l]) => `${IMG_BASE}/${l}/${s.s}/${s.id}/${encodeURIComponent(c.l)}/low.webp`);
+  }
+
+  // ---------- Rendu des cartes ----------
+  function cardFace(c, foil, tag = 'div') {
+    const name = nameOf(c);
+    const [src, ...rest] = imagesOf(c);
+    const btn = tag === 'button';
+    const img = src ? `<img src="${src}"${rest.length ? ` data-next="${rest.join(' ')}"` : ''} alt="${btn ? '' : esc(name)}" loading="lazy" decoding="async" width="245" height="342">` : '';
+    return `<${btn ? 'button type="button"' : 'div'} class="card" data-id="${esc(c.id)}" data-foil="${foil}"${btn ? ` aria-label="${esc(name)}"` : ''}>` +
+      `<span class="card-inner${src ? '' : ' missing'}" data-name="${esc(name)}">${img}` +
+      `${foil ? '<span class="foil"></span>' : ''}<span class="glare"></span></span></${btn ? 'button' : 'div'}>`;
+  }
+  function pocket(id, code, note) {
+    const c = state.cards[id];
+    if (!c) return '';
+    const foil = foilOf(c.r, c.v);
+    return `<li class="pocket">${cardFace(c, foil, 'button')}` +
+      `<div class="print"><span class="code">${esc(code ?? numberOf(c))}</span><span class="rar ${foil}">${esc(note ?? rarityName(c.r))}</span></div>` +
+      `<p class="cname">${esc(nameOf(c))}</p></li>`;
+  }
+
+  // ---------- Tranche ----------
+  function renderSpine() {
+    const q = norm($('#set-filter').value);
+    let list = state.sets.filter((s) => !q || s.search.includes(q));
+    if (state.sort === 'alpha') list.sort((a, b) => setName(a).localeCompare(setName(b), 'fr', { numeric: true }));
+    else {
+      // Groupé par série : les séries dans l'ordre de leur extension la plus récente (ou la plus ancienne)
+      const old = state.sort === 'old';
+      const rank = new Map();
+      for (const s of state.sets) {
+        if (!s.d) continue;
+        const r = rank.get(s.s);
+        if (!r || (old ? s.d < r : s.d > r)) rank.set(s.s, s.d);
+      }
+      const byDate = (a, b) => (a.d || '9999').localeCompare(b.d || '9999');
+      list.sort((a, b) => {
+        const ra = rank.get(a.s) || '9999', rb = rank.get(b.s) || '9999';
+        if (a.s !== b.s) return (old ? ra.localeCompare(rb) : rb.localeCompare(ra)) || a.s.localeCompare(b.s);
+        return old ? byDate(a, b) : byDate(b, a);
+      });
+    }
+    let html = '';
+    let group = null;
+    for (const s of list) {
+      if (state.sort !== 'alpha' && s.s !== group) { html += `<li class="year" role="presentation">${esc(serieName(s.s))}</li>`; group = s.s; }
+      html += `<li><a class="set-link" href="#/set/${encodeURIComponent(s.id)}"${state.current === s ? ' aria-current="page"' : ''}>` +
+        `<span class="sname">${esc(setName(s))}</span><span class="scode">${esc(setCode(s))}${s.d ? ' · ' + s.d.slice(0, 4) : ''}</span><span class="scount">${s.k.length}</span></a></li>`;
+    }
+    $('#set-list').innerHTML = html || '<li class="empty">Aucune extension ne correspond. Essaie un code comme SCR ou un autre mot du nom.</li>';
+  }
+
+  // ---------- Vues ----------
+  function showHome() {
+    state.current = null;
+    document.title = 'Classeur Pokémon';
+    const latest = state.sets.filter((s) => s.d).slice(0, 12);
+    const built = state.meta.builtAt ? ` Données mises à jour le ${fmtDate(state.meta.builtAt.slice(0, 10))}.` : '';
+    view.innerHTML = `<header class="view-head"><h1 class="title">Toutes les cartes Pokémon, rangées par extension</h1>` +
+      `<p class="lede">${plural(Object.keys(state.cards).length, 'carte', 'cartes')} dans ${plural(state.sets.length, 'extension', 'extensions')}, du Set de Base à aujourd'hui. Choisis une extension dans la liste ou cherche une carte par son nom.${built}</p></header>` +
+      `<h2 class="section">Dernières sorties</h2><ul class="set-tiles">` +
+      latest.map((s) => `<li><a class="set-tile" href="#/set/${encodeURIComponent(s.id)}"><b>${esc(setCode(s))}</b><span>${esc(setName(s))}</span><small>${fmtDate(s.d)}, ${plural(s.k.length, 'carte', 'cartes')}</small></a></li>`).join('') +
+      `</ul>`;
+    renderSpine();
+  }
+
+  function showSet(set) {
+    state.current = set;
+    state.kind = 'all';
+    state.filter = '';
+    document.title = `${setName(set)} – Classeur Pokémon`;
+    const counts = { all: set.k.length, P: 0, T: 0, E: 0 };
+    for (const id of set.k) if (state.cards[id]) counts[state.cards[id].c] = (counts[state.cards[id].c] || 0) + 1;
+    const date = set.d ? `Sortie le ${fmtDate(set.d)}, ` : '';
+    const extra = set.o && set.k.length > set.o ? ` (${set.o} numérotées + ${set.k.length - set.o} secrètes ou hors numérotation)` : '';
+    view.innerHTML = `<header class="view-head"><p class="set-code">${esc(setCode(set))} <span>· ${esc(serieName(set.s))}</span></p><h1 class="title">${esc(setName(set))}</h1>` +
+      `<p class="lede">${date}${plural(set.k.length, 'carte', 'cartes')}${extra}.</p></header>` +
+      `<div class="toolbar"><div class="seg" role="group" aria-label="Type de carte">` +
+      KINDS.filter(([k]) => k === 'all' || counts[k]).map(([k, label]) => `<button type="button" data-kind="${k}" aria-pressed="${k === 'all'}">${label}<small>${counts[k]}</small></button>`).join('') +
+      `</div><input type="search" id="in-set" placeholder="Filtrer cette extension" aria-label="Filtrer cette extension" autocomplete="off"></div>` +
+      `<ul class="pockets" id="grid"></ul>`;
+    renderSetGrid();
+    renderSpine();
+    $('#page').scrollTop = 0;
+  }
+
+  function renderSetGrid() {
+    const set = state.current;
+    const q = norm(state.filter);
+    const rows = set.k.filter((id) => {
+      const c = state.cards[id];
+      if (!c) return false;
+      if (state.kind !== 'all' && c.c !== state.kind) return false;
+      return !q || norm(c.n + ' ' + (c.nf || '') + ' ' + c.l).includes(q);
+    });
+    $('#grid').innerHTML = rows.map((id) => pocket(id)).join('') ||
+      '<li class="empty">Aucune carte ne correspond à ce filtre.</li>';
+  }
+
+  function showSearch(raw) {
+    state.current = null;
+    const q = norm(raw);
+    const hits = state.index.filter(([, s]) => s.includes(q)).map(([id]) => id);
+    const date = (id) => state.setById.get(state.cards[id].s)?.d || '9999';
+    hits.sort((a, b) => {
+      const na = norm(nameOf(state.cards[a])), nb = norm(nameOf(state.cards[b]));
+      return (nb.startsWith(q) - na.startsWith(q)) || na.localeCompare(nb) || date(a).localeCompare(date(b));
+    });
+    const shown = hits.slice(0, SEARCH_LIMIT);
+    const sub = hits.length > SEARCH_LIMIT ? `Les ${SEARCH_LIMIT} premières sur ${plural(hits.length, 'carte', 'cartes')}. Précise ta recherche pour affiner.` : plural(hits.length, 'carte trouvée', 'cartes trouvées') + '.';
+    view.innerHTML = `<header class="view-head"><h1 class="title">« ${esc(raw.trim())} »</h1><p class="lede">${sub}</p></header>` +
+      (hits.length ? `<ul class="pockets">` + shown.map((id) => {
+        const c = state.cards[id];
+        const s = state.setById.get(c.s);
+        return pocket(id, `${setCode(s)} ${numberOf(c)}`, setName(s));
+      }).join('') + `</ul>` : `<p class="status">Aucune carte ne porte ce nom. Vérifie l'orthographe ou essaie dans l'autre langue (bouton FR / EN).</p>`);
+    renderSpine();
+  }
+
+  function route() {
+    const q = $('#card-search').value;
+    if (norm(q).length >= 2) return showSearch(q);
+    const m = decodeURIComponent(location.hash.slice(1)).match(/^\/set\/(.+)$/);
+    const set = m && state.setById.get(m[1]);
+    set ? showSet(set) : showHome();
+  }
+
+  // ---------- Fiche carte ----------
+  const dlg = $('#card-dialog');
+  const pick = (pair) => (pair ? (fr() ? pair[1] || pair[0] : pair[0] || pair[1]) || '' : '');
+  // Le texte des cartes écrit les énergies {R}, {W}… : on les remplace par des pastilles
+  const rich = (s) => esc(s).replace(/\{([A-Z])\}/g, (m, l) => (LETTER[l] ? pip(LETTER[l]) : m));
+
+  function statsOf(c) {
+    const rows = [];
+    if (c.c === 'P') {
+      rows.push(['Catégorie', 'Pokémon' + (c.st ? ` – ${fr() ? STAGE[c.st] || c.st : c.st}` : '')]);
+      if (c.ev) rows.push(['Évolue de', fr() ? c.ev[1] || c.ev[0] : c.ev[0]]);
+      if (c.hp != null) rows.push(['PV', c.hp]);
+      if (c.ty) rows.push(['Type', c.ty.map((t) => `${pip(t)} ${esc(typeName(t))}`).join(' '), true]);
+      if (c.w) rows.push(['Faiblesse', c.w.map(([t, v]) => `${pip(t)} ${esc(v)}`).join(' '), true]);
+      if (c.re) rows.push(['Résistance', c.re.map(([t, v]) => `${pip(t)} ${esc(v)}`).join(' '), true]);
+      if (c.rt != null) rows.push(['Retraite', c.rt ? pip('Colorless').repeat(c.rt) : '0', true]);
+      if (c.dx) rows.push(['Pokédex', c.dx.map((n) => `n° ${n}`).join(', ')]);
+    } else if (c.c === 'T') {
+      rows.push(['Catégorie', 'Dresseur' + (c.tt ? ` – ${fr() ? TRAINER[c.tt] || c.tt : c.tt}` : '')]);
+    } else {
+      rows.push(['Catégorie', c.et === 'Special' ? 'Énergie spéciale' : c.et === 'Normal' ? 'Énergie de base' : 'Énergie']);
+      if (c.ty) rows.push(['Type', c.ty.map((t) => `${pip(t)} ${esc(typeName(t))}`).join(' '), true]);
+    }
+    const s = state.setById.get(c.s);
+    rows.push(['Extension', `<a href="#/set/${encodeURIComponent(s.id)}" data-close>${esc(setName(s))}</a> (${esc(setCode(s))} ${esc(numberOf(c))})`, true]);
+    if (c.r) rows.push(['Rareté', rarityName(c.r)]);
+    if (c.v) rows.push(['Versions', c.v.map((v) => VARIANT[v] || v).join(', ')]);
+    if (c.rm) rows.push(['Marque de régulation', c.rm]);
+    if (c.il) rows.push(['Illustrateur', c.il]);
+    return rows.map(([k, v, html]) => `<dt>${esc(k)}</dt><dd>${html ? v : esc(v)}</dd>`).join('');
+  }
+
+  function textOf(t) {
+    if (!t) return '';
+    let html = '';
+    for (const [kind, type, cost, nEn, nFr, dmg, eEn, eFr] of t.a || []) {
+      const label = kind === 1 && type ? (fr() ? ABILITY[type] : null) || type : MOVE_KIND[kind];
+      const name = pick([nEn, nFr]);
+      const eff = pick([eEn, eFr]);
+      html += `<div class="move"><div class="move-head">${kind === 0 ? (cost || []).map(pip).join('') : `<span class="move-kind">${esc(label)}</span>`}` +
+        `<span>${esc(name)}</span>${dmg ? `<span class="dmg">${esc(dmg)}</span>` : ''}</div>${eff ? `<p>${rich(eff)}</p>` : ''}</div>`;
+    }
+    if (t.e) html += `<div class="move"><p>${rich(pick(t.e))}</p></div>`;
+    if (t.d) html += `<p class="flavor">${esc(pick(t.d))}</p>`;
+    return html;
+  }
+
+  async function openCard(id, foil) {
+    const c = state.cards[id];
+    if (!c) return;
+    $('#dlg-card').innerHTML = cardFace(c, foil, 'div');
+    $('#dlg-name').textContent = nameOf(c);
+    $('#dlg-alt').textContent = altNameOf(c);
+    $('#dlg-alt').hidden = !altNameOf(c);
+    $('#dlg-stats').innerHTML = statsOf(c);
+    const same = state.byName.get(norm(c.n)) || [];
+    $('#dlg-prints-title').hidden = same.length < 2;
+    $('#dlg-prints').innerHTML = same.length < 2 ? '' : same.map((oid) => {
+      const o = state.cards[oid];
+      const s = state.setById.get(o.s);
+      const here = oid === id;
+      return `<li><a href="#/set/${encodeURIComponent(s.id)}" data-close${here ? ' aria-current="true"' : ''}><b${here ? ' class="here"' : ''}>${esc(setCode(s))} ${esc(numberOf(o))}</b><span class="pn">${esc(setName(s))}</span></a> <span class="pr">${esc(rarityName(o.r))}</span></li>`;
+    }).join('');
+    const desc = $('#dlg-desc');
+    if (!dlg.open) dlg.showModal();
+    dlg.querySelector('.dlg').scrollTop = 0;
+    if (!state.texts) {
+      desc.textContent = 'Chargement du texte…';
+      desc.classList.add('loading');
+      try { state.texts = await (await fetch('data/texts.json')).json(); }
+      catch { desc.textContent = 'Le texte de la carte n\'a pas pu être chargé. Recharge la page pour réessayer.'; return; }
+    }
+    desc.classList.remove('loading');
+    desc.innerHTML = textOf(state.texts[id]);
+  }
+  $('#dlg-close').addEventListener('click', () => dlg.close());
+  dlg.addEventListener('click', (e) => {
+    if (e.target === dlg || e.target.closest('[data-close]')) {
+      if (e.target.closest('[data-close]')) $('#card-search').value = '';
+      dlg.close();
+    }
+  });
+
+  // ---------- Inclinaison au survol ----------
+  const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)');
+  let active = null, lastEv = null, raf = 0;
+  function resetTilt(card) {
+    card.classList.remove('tilting');
+    card.style.setProperty('--rx', '0deg');
+    card.style.setProperty('--ry', '0deg');
+  }
+  function applyTilt() {
+    raf = 0;
+    if (!active || !lastEv) return;
+    const r = active.getBoundingClientRect();
+    const px = Math.min(Math.max((lastEv.clientX - r.left) / r.width, 0), 1);
+    const py = Math.min(Math.max((lastEv.clientY - r.top) / r.height, 0), 1);
+    const s = active.style;
+    s.setProperty('--ry', ((px - 0.5) * 2 * TILT_MAX * TILT_DIR).toFixed(2) + 'deg');
+    s.setProperty('--rx', ((0.5 - py) * 2 * TILT_MAX * TILT_DIR).toFixed(2) + 'deg');
+    s.setProperty('--mx', (px * 100).toFixed(1) + '%');
+    s.setProperty('--my', (py * 100).toFixed(1) + '%');
+    s.setProperty('--shx', ((0.5 - px) * 18).toFixed(1) + 'px');
+    s.setProperty('--shy', (12 + (0.5 - py) * 14).toFixed(1) + 'px');
+  }
+  document.addEventListener('pointermove', (e) => {
+    if (e.pointerType === 'touch' || reduceMotion.matches) return;
+    const card = e.target.closest ? e.target.closest('.card') : null;
+    if (card !== active) {
+      if (active) resetTilt(active);
+      active = card;
+      if (card) card.classList.add('tilting');
+    }
+    if (!card) return;
+    lastEv = e;
+    if (!raf) raf = requestAnimationFrame(applyTilt);
+  }, { passive: true });
+  document.addEventListener('pointerout', (e) => {
+    if (!e.relatedTarget && active) { resetTilt(active); active = null; }
+  });
+
+  // Image absente : on essaie l'autre langue, puis on affiche le nom à la place
+  document.addEventListener('error', (e) => {
+    const img = e.target;
+    const inner = img.tagName === 'IMG' && img.closest('.card-inner');
+    if (!inner) return;
+    const [next, ...rest] = (img.dataset.next || '').split(' ').filter(Boolean);
+    if (next) { img.dataset.next = rest.join(' '); img.src = next; return; }
+    inner.classList.add('missing');
+    img.remove();
+  }, true);
+
+  // ---------- Événements ----------
+  const app = $('#app');
+  function setNav(open) {
+    app.classList.toggle('nav-open', open);
+    $('#scrim').hidden = !open;
+    $('#menu-btn').setAttribute('aria-expanded', String(open));
+  }
+  $('#menu-btn').addEventListener('click', () => setNav(true));
+  $('#scrim').addEventListener('click', () => setNav(false));
+  $('#set-list').addEventListener('click', (e) => {
+    if (e.target.closest('a')) { $('#card-search').value = ''; setNav(false); }
+  });
+  $('#set-filter').addEventListener('input', renderSpine);
+  const sortSel = $('#set-sort');
+  sortSel.value = state.sort;
+  sortSel.addEventListener('change', () => { state.sort = sortSel.value; store.set('pkm-sort', state.sort); renderSpine(); });
+
+  let searchTimer = 0;
+  $('#card-search').addEventListener('input', () => { clearTimeout(searchTimer); searchTimer = setTimeout(route, 160); });
+
+  view.addEventListener('click', (e) => {
+    const card = e.target.closest('button.card');
+    if (card) return openCard(card.dataset.id, card.dataset.foil);
+    const seg = e.target.closest('[data-kind]');
+    if (seg) {
+      state.kind = seg.dataset.kind;
+      view.querySelectorAll('[data-kind]').forEach((b) => b.setAttribute('aria-pressed', String(b === seg)));
+      renderSetGrid();
+    }
+  });
+  view.addEventListener('input', (e) => {
+    if (e.target.id === 'in-set') { state.filter = e.target.value; renderSetGrid(); }
+  });
+
+  function paintLang() {
+    document.documentElement.lang = state.lang;
+    document.querySelectorAll('#lang-btn span').forEach((s) => s.classList.toggle('on', s.dataset.l === state.lang));
+  }
+  $('#lang-btn').addEventListener('click', () => {
+    state.lang = state.lang === 'fr' ? 'en' : 'fr';
+    store.set('pkm-lang', state.lang);
+    paintLang();
+    if (state.current) {
+      const { kind, filter } = state;
+      showSet(state.current);
+      state.kind = kind; state.filter = filter;
+      view.querySelectorAll('[data-kind]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.kind === kind)));
+      $('#in-set').value = filter;
+      renderSetGrid();
+    } else route();
+  });
+  window.addEventListener('hashchange', route);
+
+  // ---------- Chargement ----------
+  (async () => {
+    paintLang();
+    try {
+      const [{ series, sets }, cards, meta] = await Promise.all(['sets', 'cards', 'meta'].map((f) =>
+        fetch(`data/${f}.json`).then((r) => { if (!r.ok) throw new Error(f); return r.json(); })));
+      state.cards = cards;
+      state.meta = meta;
+      for (const s of series) state.series.set(s.id, s);
+      state.sets = sets;
+      for (const s of sets) {
+        s.search = norm(`${s.n} ${s.nf || ''} ${s.c} ${s.id}`);
+        state.setById.set(s.id, s);
+      }
+      for (const [id, c] of Object.entries(cards)) {
+        c.id = id;
+        state.index.push([id, norm(c.n + ' ' + (c.nf || ''))]);
+        const key = norm(c.n);
+        if (!state.byName.has(key)) state.byName.set(key, []);
+        state.byName.get(key).push(id);
+      }
+      const date = (id) => state.setById.get(cards[id].s)?.d || '9999';
+      for (const list of state.byName.values()) list.sort((a, b) => date(a).localeCompare(date(b)));
+      if (meta.builtAt) $('#built').textContent = ` Mise à jour : ${fmtDate(meta.builtAt.slice(0, 10))}.`;
+      route();
+    } catch {
+      view.innerHTML = '<p class="status">Les données du classeur sont introuvables. Lance <code>node scripts/build.mjs</code>, puis sers le dossier <code>dist/</code>.</p>';
+    }
+  })();
+})();
+</script>
+</body>
+</html>

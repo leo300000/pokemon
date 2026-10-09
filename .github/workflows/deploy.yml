@@ -1,0 +1,48 @@
+name: Construire et déployer le classeur
+
+on:
+  push:
+    branches: [main]
+  schedule:
+    - cron: "0 4 * * 1" # chaque lundi à 4 h UTC, pour récupérer les nouvelles extensions
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      # Clone la base TCGdex, prépare les données et copie le site dans dist/
+      - name: Construire le site
+        run: node scripts/build.mjs
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
