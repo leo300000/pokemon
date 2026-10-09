@@ -2,7 +2,8 @@ name: Construire et déployer le classeur
 
 on:
   push:
-    branches: [main]
+    # main, et la branche par défaut actuelle du dépôt (seule autorisée à publier sur Pages tant qu'elle reste par défaut)
+    branches: [main, claude/vibrant-newton-3wb8zh]
   schedule:
     - cron: "0 4 * * 1" # chaque lundi à 4 h UTC, pour récupérer les nouvelles extensions
   workflow_dispatch:
