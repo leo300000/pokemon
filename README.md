@@ -217,6 +217,9 @@ Il attend la fin du job `build`, puis **`actions/deploy-pages@v4`** publie l'art
 
 **Settings → Pages → Build and deployment → Source : GitHub Actions.**
 
+**Settings → General → Default branch : `main`.** Les tâches planifiées partent de la branche par défaut, et seule
+celle-ci a le droit de publier sur GitHub Pages.
+
 ### Bon à savoir
 
 Sur un dépôt public, GitHub désactive les tâches planifiées après 60 jours sans activité. Si la mise à jour du
